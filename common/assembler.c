@@ -682,7 +682,7 @@ int check_for_directive(struct _asm_context *asm_context, char *token)
         else
 #endif
       {
-        asm_context->parse_directive = NULL;
+        //asm_context->parse_directive = NULL;
       }
 
       return 1;

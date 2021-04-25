@@ -398,7 +398,7 @@ struct _cpu_list cpu_list[] =
     0,
     SREC_16,
     parse_instruction_8051,
-    NULL,
+    parse_directive_8051,
     link_not_supported,
     list_output_8051,
     disasm_range_8051,
