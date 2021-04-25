@@ -325,9 +325,68 @@ int parse_directive_8051(struct _asm_context *asm_context, const char *token1)
 		return 1;
 }
 
+int find_symbol_to_dec(struct _asm_context *asm_context,const int ck_address)
+{
+		struct _symbols *symbols = &(asm_context->symbols);
+		struct _memory_pool *memory_pool = symbols->memory_pool;
+		int ptr;
+
+		// Check local scope.
+		if (symbols->in_scope != 0)
+		{
+				while(memory_pool != NULL)
+				{
+						ptr = 0;
+
+						while(ptr < memory_pool->ptr)
+						{
+								struct _symbols_data *symbols_data =
+										(struct _symbols_data *)(memory_pool->buffer + ptr);
+
+								if (symbols->current_scope == symbols_data->scope &&
+												symbols_data->address > ck_address )
+								{
+										//printf("fixed symbol(%s) = %04x --> %04x \n",symbols_data->name,symbols_data->address ,symbols_data->address -1 );
+										symbols_data->address = symbols_data->address - 1 ;
+								}
+
+								ptr += symbols_data->len + sizeof(struct _symbols_data);
+						}
+
+						memory_pool = memory_pool->next;
+				}
+
+				memory_pool = symbols->memory_pool;
+		}
+
+		// Check global scope.
+		while(memory_pool != NULL)
+		{
+				ptr = 0;
+
+				while(ptr < memory_pool->ptr)
+				{
+						struct _symbols_data *symbols_data =
+								(struct _symbols_data *)(memory_pool->buffer + ptr);
+
+						if (symbols_data->scope == 0 && symbols_data->address > ck_address )
+						{
+								//printf("fixed symbol(%s) = %04x --> %04x \n",symbols_data->name,symbols_data->address ,symbols_data->address -1 );
+								symbols_data->address = symbols_data->address - 1 ;
+						}
+
+						ptr += symbols_data->len + sizeof(struct _symbols_data);
+				}
+
+				memory_pool = memory_pool->next;
+		}
+
+		return 0;
+}
+
 int parse_instruction_8051(struct _asm_context *asm_context, char *instr)
 {
-  char instr_case_mem[TOKENLEN];
+  char instr_case_mem[TOKENLEN]={0};
   char *instr_case = instr_case_mem;
   char token[TOKENLEN];
   struct _operand operands[3];
@@ -337,6 +396,7 @@ int parse_instruction_8051(struct _asm_context *asm_context, char *instr)
   int matched = 0;
   int num, n, r;
   int count = 1;
+  int optimize_try=1;
 
   lower_copy(instr_case, instr);
   memset(&operands, 0, sizeof(operands));
@@ -548,7 +608,37 @@ printf("[%d %d]", operands[n].type, operands[n].value);
 }
 printf("\n");
 #endif
+int run_optimize  = 0;
+if (asm_context->optimize == 1 && asm_context->pass == 2 ) {
+  //printf("instr = %s \n",  instr_case );
+  if(strcmp(instr_case,"ljmp")==0 ) {
+    //printf("(%d) change instr from %s to ajmp \n",asm_context->tokens.line,instr_case);
+    strcpy(instr_case,"ajmp");
+    run_optimize = 1;
+    optimize_try ++ ; //  2
+  }else if ( strcmp(instr_case,"lcall")==0 ) {
+    //printf("(%d) change instr from %s to acall \n",asm_context->tokens.line,instr_case);
+    strcpy(instr_case,"acall");
+    run_optimize = 1;
+    optimize_try ++ ; // 2
+  }
+}
 
+do {
+  if ( run_optimize ) {
+    if (optimize_try == 1) {
+       if(strcmp(instr_case,"ajmp")==0 ) {
+          //printf("2nd try change instr from %s to ljmp \n",instr_case);
+          strcpy(instr_case,"ljmp");
+          run_optimize = 0;
+
+       }else if ( strcmp(instr_case,"acall")==0 ) {
+          //printf("2nd try change instr from %s to lcall \n",instr_case);
+          strcpy(instr_case,"lcall");
+          run_optimize = 0;
+       }
+    }
+  }
   for (n = 0; n < 256; n++)
   {
     if (strcmp(table_8051[n].name, instr_case) == 0)
@@ -625,8 +715,31 @@ printf("\n");
 
               if (high_bits != (address & 0xf800))
               {
-                print_error("Destination address outside 2k block.", asm_context);
-                return -1;
+                if (optimize_try > 1) {
+									//  printf(" OP_PAGE fail, need try \n");
+                  r = 4;
+                  break;
+                }else {
+                  print_error("Destination address outside 2k block.", asm_context);
+                  return -1;
+                }
+              }
+							if ( optimize_try > 1 && (operands[r].value >address)) {
+									r = 4;
+                  break;
+							}
+              // get matched ,assembly it
+              if (optimize_try > 1) {
+									if (asm_context->pass == 2 && asm_context->extra_context==0)  { /* only need fixed and show up in Pass 2 */
+										if (asm_context->quiet_output == 0)
+											printf("Optimize: %s at %s:%d \n", instr_case,
+													 asm_context->tokens.filename,
+													 asm_context->tokens.line);
+										/* fixed the symbol behind this address */
+										find_symbol_to_dec(asm_context,address);
+										asm_context->memory.size -= 1;
+									}
+									optimize_try = 1;
               }
             }
               else
@@ -708,8 +821,11 @@ printf("\n");
 
         break;
       }
+
     }
   }
+  //printf(" optimize_try = %d \n",optimize_try);
+}while ( --optimize_try > 0);
 
   if (n == 256)
   {

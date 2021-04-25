@@ -434,7 +434,7 @@ int main(int argc, char *argv[])
     asm_context.pass = 2;
     assembler_init(&asm_context);
 
-    if (create_list == 1) { asm_context.write_list_file = 1; }
+    if (create_list == 1 && asm_context.optimize==0) { asm_context.write_list_file = 1; }
 
     error_flag = assemble(&asm_context);
 
@@ -445,7 +445,28 @@ int main(int argc, char *argv[])
       error_flag = 1;
       break;
     }
+		/* if have optimize enable, run Pass 3 ?? for somereason, I can't call it pass3, otherwise, this flow will be break */
+		if ( asm_context.optimize==1 ) {
+				symbols_scope_reset(&asm_context.symbols);
+				// macros_lock(&asm_context.defines_heap);
 
+				if (asm_context.quiet_output == 0) { printf("Run optimize ...\n"); }
+				//asm_context.pass = 3; /* still keep it in Pass 2 phase, otherwise, the flow will be break. */
+				assembler_init(&asm_context);
+				memory_init(&asm_context.memory, ~((uint32_t)0), 1); /* clean asm_context->memory */
+
+				if (create_list == 1 && asm_context.optimize==1) { asm_context.write_list_file = 1; }
+				asm_context.extra_context = 1; /* no one use this extra_context field */
+				error_flag = assemble(&asm_context);
+
+				if (error_flag != 0) { break; }
+
+				if (assembler_link(&asm_context) != 0) /* fixed me, this linker may have issue, need check carefully, later */
+				{
+						error_flag = 1;
+						break;
+				}
+		} /* end if optimize phase */
     if (format == FORMAT_HEX)
     {
       write_hex(&asm_context.memory, out);
