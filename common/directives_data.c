@@ -39,7 +39,7 @@ int parse_db(struct _asm_context *asm_context, int null_term_flag)
     token_type = tokens_get(asm_context, token, TOKENLEN);
     if (token_type == TOKEN_EOL || token_type == TOKEN_EOF) break;
 
-    if (token_type == TOKEN_QUOTED)
+    if (token_type == TOKEN_QUOTED || token_type == TOKEN_TICKED)
     {
       uint8_t *s = (uint8_t *)token;
 

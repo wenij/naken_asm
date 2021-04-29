@@ -370,7 +370,7 @@ int tokens_get(struct _asm_context *asm_context, char *token, int len)
       {
         ch = tokens_get_char(asm_context);
 
-        if (ptr > 1)
+				if (ptr >= len - 1)
         {
           print_error("Unterminated ticks", asm_context);
           asm_context->error_count++;
