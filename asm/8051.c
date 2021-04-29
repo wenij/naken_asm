@@ -286,13 +286,18 @@ int parse_directive_8051(struct _asm_context *asm_context, const char *token1)
 					{
 							return -1;
 					}
+					/* check EOL */
+					token_type = tokens_get(asm_context, token, TOKENLEN);
+					if (token_type != TOKEN_EOL && token_type != TOKEN_EOF) {
+							print_error_unexp(token, asm_context);
+							return -1;
+					}
 			}else {
 					if (eval_expression(asm_context, &num) == -1)
 					{
-							print_error("set expects an address", asm_context);
+							print_error("set eval expression fail", asm_context);
 							return -1;
 					}
-
 					token_type = tokens_get(asm_context, token, TOKENLEN);
 					if( token_type == TOKEN_SYMBOL && token[0]=='.' && token[1]==0) {
 							token_type = tokens_get(asm_context, token, TOKENLEN);
@@ -317,6 +322,12 @@ int parse_directive_8051(struct _asm_context *asm_context, const char *token1)
 							}else {
 									num = (( num - 0x20) << 3) + bit;
 							}
+							/* check EOL, will it limit to only one .BIT in one line? */
+							token_type = tokens_get(asm_context, token, TOKENLEN);
+							if (token_type != TOKEN_EOL && token_type != TOKEN_EOF) {
+									print_error_unexp(token, asm_context);
+									return -1;
+							}
 					}else if (token_type != TOKEN_EOL && token_type != TOKEN_EOF &&
 										 token_type == TOKEN_NUMBER)
 					{
@@ -324,6 +335,7 @@ int parse_directive_8051(struct _asm_context *asm_context, const char *token1)
 							return -1;
 					}
 			}
+
 			// REVIEW - should num be divided by bytes_per_address for dsPIC and avr8?
 			symbols_set(&asm_context->symbols, name, num);
 
