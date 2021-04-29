@@ -277,47 +277,57 @@ int parse_directive_8051(struct _asm_context *asm_context, const char *token1)
 
 			if (expect_token(asm_context, '=') != 0) { return -1; }
 
-			if (eval_expression(asm_context, &num) == -1)
-			{
-					print_error("set expects an address", asm_context);
-					return -1;
-			}
-
 			token_type = tokens_get(asm_context, token, TOKENLEN);
-			if( token_type == TOKEN_SYMBOL && token[0]=='.' && token[1]==0) {
+			tokens_push(asm_context, token, token_type);
+			if( token_type == TOKEN_STRING ) {
+					uint8_t is_bit_address=0;
+
+					if (get_address(asm_context, &num, &is_bit_address) == -1)
+					{
+							return -1;
+					}
+			}else {
+					if (eval_expression(asm_context, &num) == -1)
+					{
+							print_error("set expects an address", asm_context);
+							return -1;
+					}
+
 					token_type = tokens_get(asm_context, token, TOKENLEN);
-					if(token_type!=TOKEN_NUMBER) {
+					if( token_type == TOKEN_SYMBOL && token[0]=='.' && token[1]==0) {
+							token_type = tokens_get(asm_context, token, TOKENLEN);
+							if(token_type!=TOKEN_NUMBER) {
+									print_error_unexp(token, asm_context);
+									return -1;
+							}
+							int bit = atol(token);
+							if ( bit > 7 || bit < 0) {
+									print_error_range(token, 0,7,asm_context);
+									return -1;
+							}
+							/* calculate bit address */
+							if (num < 0x20 || (num > 0x2f && num < 0x80) || (num > 0x80 && (num % 8 !=0)) || num > 0xff) {
+									printf("Error: None bit address '0x%02x' at %s:%d.\n",num,asm_context->tokens.filename,
+																	asm_context->tokens.line);
+									return -1;
+							}
+							/* calculate the bit_address */
+							if ( num >= 0x80 ) {
+									num = num + bit;
+							}else {
+									num = (( num - 0x20) << 3) + bit;
+							}
+					}else if (token_type != TOKEN_EOL && token_type != TOKEN_EOF &&
+										 token_type == TOKEN_NUMBER)
+					{
 							print_error_unexp(token, asm_context);
 							return -1;
 					}
-					int bit = atol(token);
-					if ( bit > 7 || bit < 0) {
-							print_error_range(token, 0,7,asm_context);
-							return -1;
-					}
-					/* calculate bit address */
-					if (num < 0x20 || (num > 0x2f && num < 0x80) || (num > 0x80 && (num % 8 !=0)) || num > 0xff) {
-							printf("Error: None bit address '0x%02x' at %s:%d.\n",num,asm_context->tokens.filename,
-															asm_context->tokens.line);
-							return -1;
-					}
-					/* calculate the bit_address */
-					if ( num >= 0x80 ) {
-							num = num + bit;
-					}else {
-							num = (( num - 0x20) << 3) + bit;
-					}
-			}else if (token_type != TOKEN_EOL && token_type != TOKEN_EOF &&
-								 token_type == TOKEN_NUMBER)
-			{
-					print_error_unexp(token, asm_context);
-					return -1;
 			}
-
 			// REVIEW - should num be divided by bytes_per_address for dsPIC and avr8?
 			symbols_set(&asm_context->symbols, name, num);
 
-			//asm_context->tokens.line++;
+			asm_context->tokens.line++;
 
 			return 0;
 		}
