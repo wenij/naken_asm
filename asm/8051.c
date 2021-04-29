@@ -619,6 +619,13 @@ printf("[%d %d]", operands[n].type, operands[n].value);
 printf("\n");
 #endif
 int run_optimize  = 0;
+// check if call be used, if then use it as lcall first
+if ( strcmp(instr_case,"call")==0) {
+		strcpy(instr_case,"lcall");
+}
+if ( strcmp(instr_case,"jmp")==0 && (operands[0].type != OPERAND_AT_A_PLUS_DPTR) ) { /* we have a JMP @A+DPTR opcode, need to prevent this case */
+		strcpy(instr_case,"ljmp");
+}
 if (asm_context->optimize == 1 && asm_context->pass == 2 ) {
   //printf("instr = %s \n",  instr_case );
   if(strcmp(instr_case,"ljmp")==0 ) {
