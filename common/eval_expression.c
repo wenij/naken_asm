@@ -111,6 +111,18 @@ static int get_operator(char *token, struct _operator *operator)
     }
   }
     else
+  if( strcasecmp(token,"low")==0 )
+  {
+    operator->precedence = PREC_NOT;
+    operator->operation = OPER_LOW;
+  }
+    else
+  if( strcasecmp(token,"high")==0 )
+  {
+    operator->precedence = PREC_NOT;
+    operator->operation = OPER_HIGH;
+  }
+    else
   {
     return -1;
   }
@@ -198,6 +210,8 @@ static int parse_unary(struct _asm_context *asm_context, int *num, int operation
 
   if (operation == OPER_NOT) { *num = ~temp; }
   else if (operation == OPER_MINUS) { *num = -temp; }
+	else if (operation == OPER_LOW) { *num = (temp & 0xff); }
+	else if (operation == OPER_HIGH) { *num = ((temp >> 8) & 0xff); }
   else { print_error_internal(NULL, __FILE__, __LINE__); return -1; }
 
   return 0;
@@ -415,6 +429,92 @@ printf("OPERATOR '%s': precedence last=%d this=%d\n", token, last_operator->prec
         num_stack_ptr--;
         memcpy(last_operator, &operator, sizeof(struct _operator));
       }
+		} 
+      else
+    if (token_type == TOKEN_STRING)
+	  {
+      last_token_was_op = 1;
+#if 1
+      struct _operator operator_prev;
+      memcpy(&operator_prev, &operator, sizeof(struct _operator));
+
+      if (get_operator(token, &operator) == -1)
+      {
+        print_error_unexp(token, asm_context);
+        return -1;
+      }
+
+      // Issue 15: 2015-July-21 mkohn - If operator is ~ then reverse
+      // the next number.
+      if (operator.operation == OPER_HIGH)
+      {
+        int num;
+
+        if (parse_unary(asm_context, &num, OPER_HIGH) != 0) { return -1; }
+
+        if (num_stack_ptr == 3)
+        {
+          print_error_unexp(token, asm_context);
+          return -1;
+        }
+
+        num_stack[num_stack_ptr++] = num;
+        memcpy(&operator, &operator_prev, sizeof(struct _operator));
+
+        last_token_was_op = 0;
+
+        continue;
+      }else
+      if (operator.operation == OPER_LOW)
+      {
+        int num;
+
+        if (parse_unary(asm_context, &num, OPER_LOW) != 0) { return -1; }
+        if (num_stack_ptr == 3)
+        {
+          print_error_unexp(token, asm_context);
+          return -1;
+        }
+
+        num_stack[num_stack_ptr++] = num;
+        memcpy(&operator, &operator_prev, sizeof(struct _operator));
+
+        last_token_was_op = 0;
+
+        continue;
+      }
+
+      // Stack pointer probably shouldn't be less than 2
+      if (num_stack_ptr == 0)
+      {
+        printf("Error: Unexpected operator '%s' at %s:%d\n", token, asm_context->tokens.filename, asm_context->tokens.line);
+        return -1;
+      }
+
+#ifdef DEBUG
+		  printf("OPERATOR '%s': precedence last=%d this=%d\n", token, last_operator->precedence, operator.precedence);
+#endif
+
+      if (last_operator->precedence == PREC_UNSET)
+      {
+        memcpy(last_operator, &operator, sizeof(struct _operator));
+      }
+        else
+      if (last_operator->precedence > operator.precedence)
+      {
+        // The older operation has LESS precedence
+        if (eval_expression_go(asm_context, &num_stack[num_stack_ptr-1], &operator) == -1)
+        {
+          return -1;
+        }
+      }
+      else
+      {
+        num_stack[num_stack_ptr-2] = operate(num_stack[num_stack_ptr-2], num_stack[num_stack_ptr-1], last_operator);
+        num_stack_ptr--;
+        memcpy(last_operator, &operator, sizeof(struct _operator));
+      }
+#endif
     }
       else
     {

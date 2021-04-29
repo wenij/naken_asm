@@ -515,19 +515,6 @@ int parse_instruction_8051(struct _asm_context *asm_context, char *instr)
       else
     if (token_type == TOKEN_POUND)
     {
-			int extra_keyword=0;
-
-			token_type = tokens_get(asm_context, token, TOKENLEN);
-			if (strcasecmp(token,"high")==0) { // check keyword 'high'
-					extra_keyword = 1;
-			}else if(strcasecmp(token,"low")==0) { // check keyword 'low'
-					extra_keyword = 2;
-			}
-			else
-			{
-					tokens_push(asm_context, token, token_type); // others, push back
-			}
-
       if (eval_expression(asm_context, &num) != 0)
       {
         if (asm_context->pass == 1)
@@ -541,13 +528,6 @@ int parse_instruction_8051(struct _asm_context *asm_context, char *instr)
           return -1;
         }
       }
-			/* process keyword */
-			if ( extra_keyword == 1) {
-				num = (num >> 8) & 0xff ;
-			}else if (extra_keyword == 2) {
-				num = num & 0xff ;
-			}
-
       operands[operand_count].type = OPERAND_DATA;
       operands[operand_count].value = num;
     }

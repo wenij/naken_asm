@@ -39,7 +39,9 @@ enum
   OPER_MINUS,
   OPER_AND,
   OPER_XOR,
-  OPER_OR
+  OPER_OR,
+  OPER_LOW,
+  OPER_HIGH
 };
 
 int eval_expression(struct _asm_context *asm_context, int *num);
