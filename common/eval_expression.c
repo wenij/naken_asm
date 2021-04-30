@@ -434,10 +434,17 @@ printf("OPERATOR '%s': precedence last=%d this=%d\n", token, last_operator->prec
     if (token_type == TOKEN_STRING)
 	  {
       last_token_was_op = 1;
-#if 1
       struct _operator operator_prev;
       memcpy(&operator_prev, &operator, sizeof(struct _operator));
 
+      if (asm_context->pass == 1) {
+        //print_error_unexp(token, asm_context);
+        return -1;
+      }
+      if( strcasecmp(token,"low")!=0 && strcasecmp(token,"high")!=0 ) {
+        print_error_unexp(token, asm_context);
+        return -1;
+      }
       if (get_operator(token, &operator) == -1)
       {
         print_error_unexp(token, asm_context);
@@ -451,7 +458,6 @@ printf("OPERATOR '%s': precedence last=%d this=%d\n", token, last_operator->prec
         int num;
 
         if (parse_unary(asm_context, &num, OPER_HIGH) != 0) { return -1; }
-
         if (num_stack_ptr == 3)
         {
           print_error_unexp(token, asm_context);
@@ -514,7 +520,6 @@ printf("OPERATOR '%s': precedence last=%d this=%d\n", token, last_operator->prec
         num_stack_ptr--;
         memcpy(last_operator, &operator, sizeof(struct _operator));
       }
-#endif
     }
       else
     {
