@@ -819,6 +819,9 @@ do {
               num = operands[r].value - (asm_context->address + 1);
               if (asm_context->pass == 1) { num = 0; }
 
+              /* some code may need fail if not optimize, so wait unitl optimize phase, then really check the num */
+              if (asm_context->pass == 2 && asm_context->optimize==1 && asm_context->extra_context == 0) { num = 0; }
+
               if (num < -128 || num > 127)
               {
                 print_error_range("Offset", -128, 127, asm_context);
