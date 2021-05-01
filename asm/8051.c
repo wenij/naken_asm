@@ -349,59 +349,73 @@ int parse_directive_8051(struct _asm_context *asm_context, const char *token1)
 
 int find_symbol_to_dec(struct _asm_context *asm_context,const int ck_address)
 {
-		struct _symbols *symbols = &(asm_context->symbols);
-		struct _memory_pool *memory_pool = symbols->memory_pool;
-		int ptr;
+    struct _symbols *symbols = &(asm_context->symbols);
+    struct _memory_pool *memory_pool = symbols->memory_pool;
+    int ptr;
 
+    // find the seg_address
+    struct _seg_address  *seg = asm_context->p_seg_addr;
+    //int cnt=0;
+    int limit_address = 0xffff;
+
+    //printf("%s %p ck_addr=%p\n",__FUNCTION__,seg,ck_address);
+    while( (seg != NULL) && (ck_address < seg->s_addr || ck_address > seg->e_addr) ) {
+      //printf("[%d] %04x -- %04x (next = %x)\n",cnt++,seg->s_addr,seg->e_addr,seg);
+      seg = seg->next;
+    }
+    if (seg != NULL ) {
+      limit_address = seg-> e_addr;
+      //printf("find (%04x) in seg %04x -- %04x\n",ck_address, seg->s_addr,seg->e_addr);
+		}
 		// Check local scope.
-		if (symbols->in_scope != 0)
-		{
-				while(memory_pool != NULL)
-				{
-						ptr = 0;
+    if (symbols->in_scope != 0)
+    {
+      while(memory_pool != NULL)
+      {
+        ptr = 0;
 
-						while(ptr < memory_pool->ptr)
-						{
-								struct _symbols_data *symbols_data =
-										(struct _symbols_data *)(memory_pool->buffer + ptr);
+        while(ptr < memory_pool->ptr)
+        {
+          struct _symbols_data *symbols_data =
+            (struct _symbols_data *)(memory_pool->buffer + ptr);
 
-								if (symbols->current_scope == symbols_data->scope &&
-												symbols_data->address > ck_address )
-								{
-										//printf("fixed symbol(%s) = %04x --> %04x \n",symbols_data->name,symbols_data->address ,symbols_data->address -1 );
-										symbols_data->address = symbols_data->address - 1 ;
-								}
+          if (symbols->current_scope == symbols_data->scope &&
+            symbols_data->address > ck_address && ( symbols_data->address < limit_address ) )
+          {
+              //printf("fixed symbol(%s) = %04x --> %04x \n",symbols_data->name,symbols_data->address ,symbols_data->address -1 );
+              symbols_data->address = symbols_data->address - 1 ;
+          }
 
-								ptr += symbols_data->len + sizeof(struct _symbols_data);
-						}
+          ptr += symbols_data->len + sizeof(struct _symbols_data);
+        }
 
-						memory_pool = memory_pool->next;
-				}
+        memory_pool = memory_pool->next;
+      }
 
-				memory_pool = symbols->memory_pool;
-		}
+      memory_pool = symbols->memory_pool;
+    }
 
-		// Check global scope.
-		while(memory_pool != NULL)
-		{
-				ptr = 0;
+    // Check global scope.
+    while(memory_pool != NULL)
+    {
+      ptr = 0;
 
-				while(ptr < memory_pool->ptr)
-				{
-						struct _symbols_data *symbols_data =
-								(struct _symbols_data *)(memory_pool->buffer + ptr);
+      while(ptr < memory_pool->ptr)
+      {
+        struct _symbols_data *symbols_data =
+          (struct _symbols_data *)(memory_pool->buffer + ptr);
 
-						if (symbols_data->scope == 0 && symbols_data->address > ck_address )
-						{
-								//printf("fixed symbol(%s) = %04x --> %04x \n",symbols_data->name,symbols_data->address ,symbols_data->address -1 );
-								symbols_data->address = symbols_data->address - 1 ;
-						}
+        if (symbols_data->scope == 0 && symbols_data->address > ck_address && ( symbols_data->address < limit_address ) )
+        {
+            //printf("fixed symbol(%s) = %04x --> %04x \n",symbols_data->name,symbols_data->address ,symbols_data->address -1 );
+            symbols_data->address = symbols_data->address - 1 ;
+        }
 
-						ptr += symbols_data->len + sizeof(struct _symbols_data);
-				}
+        ptr += symbols_data->len + sizeof(struct _symbols_data);
+      }
 
-				memory_pool = memory_pool->next;
-		}
+      memory_pool = memory_pool->next;
+    }
 
 		return 0;
 }

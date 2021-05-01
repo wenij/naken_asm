@@ -34,6 +34,11 @@
 #define SEGMENT_CODE 0
 #define SEGMENT_BSS 1
 
+struct _seg_address {
+	int s_addr;
+	int e_addr;
+	struct _seg_address *next;
+};
 struct _asm_context
 {
   struct _memory memory;
@@ -46,6 +51,8 @@ struct _asm_context
   list_output_t list_output;
   FILE *list;
   int address;
+  int org_address;
+  struct _seg_address *p_seg_addr;
   int segment;
   int pass;
   int instruction_count;

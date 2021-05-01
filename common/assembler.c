@@ -63,6 +63,11 @@ void assembler_free(struct _asm_context *asm_context)
   symbols_free(&asm_context->symbols);
   macros_free(&asm_context->macros);
   memory_free(&asm_context->memory);
+  while(asm_context->p_seg_addr!=NULL) {
+		struct _seg_address *p_seg = asm_context->p_seg_addr->next;
+		free(asm_context->p_seg_addr);
+		asm_context->p_seg_addr = p_seg;
+  }
 }
 
 void assembler_print_info(struct _asm_context *asm_context, FILE *out)
@@ -158,6 +163,26 @@ static int parse_org(struct _asm_context *asm_context)
 
   asm_context->address = num * asm_context->bytes_per_address;
 
+
+  if ( asm_context->pass ==1 && (asm_context->org_address != asm_context->address)) {
+    struct _seg_address *seg_a = (struct _seg_address *)malloc(sizeof(struct _seg_address));
+
+    seg_a->s_addr = asm_context->org_address;
+    seg_a->e_addr = asm_context->address;
+    seg_a->next = NULL;
+
+    if (asm_context->p_seg_addr == NULL) {
+      asm_context->p_seg_addr = seg_a;
+    }else {
+      struct _seg_address *p_seg = asm_context->p_seg_addr ;
+      while( p_seg->next != NULL) {
+        p_seg = p_seg->next;
+      }
+      p_seg->next = seg_a;
+    }
+
+    asm_context->org_address = asm_context->address;
+  }
   return 0;
 }
 
